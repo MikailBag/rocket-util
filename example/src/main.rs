@@ -9,10 +9,10 @@ async fn approve(cond: &State<Approved>) {
 
 #[rocket::launch]
 async fn rocket() -> _ {
-    let (handle, route) = rocket_util::health::make();
+    let (handle, route) = rocket_util::health::make("/health");
 
     rocket::build()
         .manage(Approved(handle.condition("approved").await))
-        .mount("/health", [route])
+        .mount("/", [route])
         .mount("/", rocket::routes!(approve))
 }

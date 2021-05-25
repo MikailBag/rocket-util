@@ -1,5 +1,3 @@
-mod hack;
-
 use rocket::{http::Status, route::Outcome, Response, Route};
 use serde::Serialize;
 use std::{collections::HashMap, io::Cursor, sync::Arc};
@@ -60,6 +58,7 @@ struct Handler {
 #[derive(Serialize)]
 struct HealthInfo {
     ok: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     failing_checks: Vec<String>,
 }
 
@@ -69,11 +68,11 @@ struct Inner {
 
 impl Inner {
     fn describe(&self) -> HealthInfo {
-        let ok = self.checks.values().all(|x| *x);
+        let ok = self.checks.values().all(|x| !x);
         let failing_checks = self
             .checks
             .iter()
-            .filter(|(_, v)| **v)
+            .filter(|(_, v)| !**v)
             .map(|(k, _)| k.clone())
             .collect();
         HealthInfo { ok, failing_checks }
@@ -103,8 +102,9 @@ impl rocket::route::Handler for Handler {
 }
 
 /// Creates a route for particular kind of help
-/// and a handle to manage this state
-pub fn make() -> (Health, Route) {
+/// and a handle to manage this state.
+/// Endpoint should be last component, such as `/`, `/ready`, etc.
+pub fn make(endpoint: &str) -> (Health, Route) {
     let inner = Inner {
         checks: HashMap::new(),
     };
@@ -115,12 +115,8 @@ pub fn make() -> (Health, Route) {
     };
     let handler = Handler { inner };
 
-    let mut route = hack::get();
+    let mut route = Route::new( rocket::http::Method::Get, endpoint, handler);
 
-    route.name = None;
-    route.method = rocket::http::Method::Get;
-    route.handler = Box::new(handler);
-    route.rank = 0;
     route.format = Some(rocket::http::MediaType::JSON);
 
     (handle, route)
