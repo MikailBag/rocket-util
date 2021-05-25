@@ -1,0 +1,9 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["Mikail Bagishov <bagishov.mikail@yandex.ru>"]
+edition = "2018"
+
+[dependencies]
+rocket-util = { path = ".." }
+rocket = { git = "https://github.com/SergioBenitez/Rocket.git" }
