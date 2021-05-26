@@ -6,4 +6,4 @@ edition = "2018"
 
 [dependencies]
 rocket-util = { path = ".." }
-rocket = { git = "https://github.com/SergioBenitez/Rocket.git" }
+rocket = { git = "https://github.com/MikailBag/Rocket.git", branch = "fork", features = ["json"] }

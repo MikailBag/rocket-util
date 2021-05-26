@@ -68,7 +68,7 @@ struct Inner {
 
 impl Inner {
     fn describe(&self) -> HealthInfo {
-        let ok = self.checks.values().all(|x| !x);
+        let ok = self.checks.values().all(|x| *x);
         let failing_checks = self
             .checks
             .iter()
@@ -104,7 +104,7 @@ impl rocket::route::Handler for Handler {
 /// Creates a route for particular kind of help
 /// and a handle to manage this state.
 /// Endpoint should be last component, such as `/`, `/ready`, etc.
-pub fn make(endpoint: &str) -> (Health, Route) {
+pub fn make(name: &str) -> (Health, Route) {
     let inner = Inner {
         checks: HashMap::new(),
     };
@@ -115,7 +115,7 @@ pub fn make(endpoint: &str) -> (Health, Route) {
     };
     let handler = Handler { inner };
 
-    let mut route = Route::new( rocket::http::Method::Get, endpoint, handler);
+    let mut route = Route::new(rocket::http::Method::Get, &format!("/{}", name), handler);
 
     route.format = Some(rocket::http::MediaType::JSON);
 
