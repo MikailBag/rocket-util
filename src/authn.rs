@@ -1,12 +1,19 @@
 use std::convert::Infallible;
 
 use rocket::{
-    http::{private::tls::CertificateParseError, tls::ClientTls, Status},
+    http::{tls::ClientTls, Status},
     outcome::IntoOutcome,
     request::FromRequest,
     Request,
 };
+use thiserror::Error;
 use x509_parser::x509::AttributeTypeAndValue;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("failed to parse certificate")]
+    X509(#[from] x509_parser::nom::Err<x509_parser::error::X509Error>),
+}
 
 pub struct RequestHeaderAuthentifierConfig {
     pub username: String,
@@ -72,18 +79,16 @@ impl UserInfo {
         }
     }
 
-    async fn auth_using_tls(
-        request: &Request<'_>,
-    ) -> rocket::request::Outcome<Self, CertificateParseError> {
+    async fn auth_using_tls(request: &Request<'_>) -> rocket::request::Outcome<Self, Error> {
         ClientTls::from_request(request)
             .await
             .map_failure(|f| match f.1 {})
             .and_then(|c| {
-                c.end_entity
-                    .parse()
-                    .map(|x509| UserInfo::parse_from_x509(&x509))
+                x509_parser::parse_x509_certificate(&c.end_entity.data())
+                    .map(|(_, x509)| UserInfo::parse_from_x509(&x509))
                     .into_outcome(Status::InternalServerError)
             })
+            .map_failure(|(status, err)| (status, err.into()))
     }
 
     async fn auth_using_request_header(
@@ -106,7 +111,7 @@ impl UserInfo {
 
 #[rocket::async_trait]
 impl<'r> FromRequest<'r> for UserInfo {
-    type Error = CertificateParseError;
+    type Error = Error;
 
     async fn from_request(
         request: &'r rocket::Request<'_>,
